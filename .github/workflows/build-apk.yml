@@ -1,0 +1,47 @@
+name: Unzip and Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Bước tự động giải nén file project.zip nếu tìm thấy
+      - name: Unzip project files
+        run: |
+          if [ -f "project.zip" ]; then
+            echo "Tìm thấy file project.zip, đang tiến hành giải nén..."
+            unzip -o project.zip
+            rm project.zip
+          else
+            echo "Không thấy file project.zip, bỏ qua bước giải nén."
+          fi
+
+      - name: Find gradlew and build APK
+        run: |
+          GRADLEW_PATH=$(find . -name gradlew -print -quit)
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "LỖI: Không tìm thấy file gradlew trong dự án!"
+            exit 1
+          fi
+          GRADLE_DIR=$(dirname "$GRADLEW_PATH")
+          chmod +x "$GRADLEW_PATH"
+          cd "$GRADLE_DIR"
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: "**/build/outputs/apk/debug/*.apk"
